@@ -189,7 +189,7 @@ class PaperManagerWindow(QMainWindow):
 
         self.settings = self.load_settings()
 
-        self.setWindowTitle("LocalPaperManager v4")
+        self.setWindowTitle("LocalPaperManager")
         self.resize(1600, 850)
         self.setAcceptDrops(True)
 

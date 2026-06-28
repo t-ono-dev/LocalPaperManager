@@ -3,7 +3,7 @@
 LocalPaperManagerは、Zoteroの代替として使うことを目的に作成した、ローカル完結型の論文管理ツールです。  
 Python + PySide6 + SQLiteで動作し、PDFファイルとBibTeXデータをCドライブ上のローカルフォルダで管理します。
 
-外部クラウドストレージを使わず、PDF本体、文献情報、フォルダ分類、設定ファイルはすべてローカルに保存されます。
+外部クラウドストレージを使わず、PDF本体、文献情報、フォルダ分類、表示設定はすべてローカルに保存されます。
 
 ---
 
@@ -56,6 +56,14 @@ Python + PySide6 + SQLiteで動作し、PDFファイルとBibTeXデータをCド
 - 複数選択した論文のAPS形式参考文献をまとめてコピー
 - Volumeはリッチテキスト対応アプリでは太字で貼り付け可能
 
+出力例：
+
+```text
+H. Yoshioka, T. Nakamura, and T. Kimoto, “Characterization of very fast states in the vicinity of the conduction band edge at the SiO2/SiC interface by low temperature conductance measurements”, J. Appl. Phys. 115, 014502 (2014).
+```
+
+WordやGoogle Docsなどのリッチテキスト対応アプリに貼り付けた場合、Volume部分は太字になります。
+
 ---
 
 ## 動作環境
@@ -83,6 +91,9 @@ Pythonパッケージは `requirements.txt` からインストールできます
 
 ## フォルダ構成
 
+配布zipには、論文PDF、SQLiteデータベース、個人設定ファイルは含めていません。  
+`data/` と `library/` はアプリ実行時またはPDF取り込み時に作成されます。
+
 ```text
 LocalPaperManager/
 ├─ app.py
@@ -101,14 +112,12 @@ LocalPaperManager/
 │  ├─ app_icon.png
 │  ├─ pdf_icon.png
 │  └─ local_paper_manager_generated_icon_full.png
-├─ data/
+├─ data/              # 実行時に作成
 │  ├─ papers.db
 │  └─ settings.json
-└─ library/
+└─ library/           # PDF取り込み時に作成
    └─ PDFs/
 ```
-
-`data/` と `library/` は実行時またはインポート時に作成されます。
 
 ---
 
@@ -133,6 +142,25 @@ LocalPaperManager
 ```
 
 以後は、このショートカットをダブルクリックするだけで起動できます。
+
+---
+
+## デスクトップアイコンについて
+
+Windowsのショートカットでは、透明背景付きアイコンが黒塗りに見えることがあります。  
+本配布版では、デスクトップショートカット用の `app_icon.ico` は透過背景で作成しています。アイコンは透過背景のまま、キャンバス内で大きめに表示されるよう調整しています。
+
+既に古いショートカットを作成済みの場合は、古いショートカットを削除してから、以下をもう一度実行してください。
+
+```text
+setup_first_time.bat
+```
+
+または、以下を右クリックしてPowerShellで実行してください。
+
+```text
+create_desktop_shortcut.ps1
+```
 
 ---
 
@@ -355,13 +383,13 @@ Notes
 DOI欄に以下のように入力すると、
 
 ```text
-xxx/xxx
+10.1063/1.4890966
 ```
 
 URL欄に以下が自動入力されます。
 
 ```text
-https://doi.org/xxx/xxx
+https://doi.org/10.1063/1.4890966
 ```
 
 ### PublicationからJournal Abbrを自動補完
@@ -378,20 +406,6 @@ Journal Abbr欄に以下が自動入力されます。
 J. Appl. Phys.
 ```
 
-対応例：
-
-```text
-Journal of Applied Physics     → J. Appl. Phys.
-Applied Physics Letters        → Appl. Phys. Lett.
-Physical Review B              → Phys. Rev. B
-Physical Review Letters        → Phys. Rev. Lett.
-Physical Review Applied        → Phys. Rev. Appl.
-Japanese Journal of Applied Physics → Jpn. J. Appl. Phys.
-Science Advances               → Sci. Adv.
-```
-
-未登録の雑誌名についても、簡易的な略称推定を行います。
-
 ---
 
 ## PDFを開く
@@ -399,13 +413,6 @@ Science Advances               → Sci. Adv.
 PDFが登録されている論文には、PDF欄にPDFアイコンが表示されます。
 
 論文行をダブルクリックすると、Windowsで既定に設定されている外部PDFビューアでPDFを開きます。
-
-例：
-
-- Adobe Acrobat Reader
-- Microsoft Edge
-- SumatraPDF
-- その他既定のPDFビューア
 
 ---
 
@@ -544,6 +551,23 @@ data/settings.json
 
 ---
 
+## 配布zipに含めないもの
+
+著作権・個人データ保護のため、配布zipには以下を含めません。
+
+```text
+data/
+library/
+.venv/
+*.db
+*.sqlite
+*.pdf
+```
+
+実際の論文PDFや個人の文献データベースは、各自のローカル環境で管理してください。
+
+---
+
 ## トラブルシューティング
 
 ### PySide6がインストールできない
@@ -660,4 +684,3 @@ PDF本体:
 外部サービス:
     DOIからBibTeXを取得する場合のみdoi.orgへアクセス
 ```
-

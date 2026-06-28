@@ -55,15 +55,6 @@ Python + PySide6 + SQLiteで動作し、PDFファイルとBibTeXデータをCド
 - フォルダ内論文のAPS形式参考文献リストをクリップボードにコピー
 - 複数選択した論文のAPS形式参考文献をまとめてコピー
 - Volumeはリッチテキスト対応アプリでは太字で貼り付け可能
-
-出力例：
-
-```text
-H. Yoshioka, T. Nakamura, and T. Kimoto, “Characterization of very fast states in the vicinity of the conduction band edge at the SiO2/SiC interface by low temperature conductance measurements”, J. Appl. Phys. 115, 014502 (2014).
-```
-
-WordやGoogle Docsなどのリッチテキスト対応アプリに貼り付けた場合、Volume部分は太字になります。
-
 ---
 
 ## 動作環境
@@ -383,13 +374,13 @@ Notes
 DOI欄に以下のように入力すると、
 
 ```text
-10.1063/1.4890966
+10.000/1.000
 ```
 
 URL欄に以下が自動入力されます。
 
 ```text
-https://doi.org/10.1063/1.4890966
+https://doi.org/10.000/1.000
 ```
 
 ### PublicationからJournal Abbrを自動補完

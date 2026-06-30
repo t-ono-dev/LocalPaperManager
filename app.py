@@ -9,13 +9,14 @@ import webbrowser
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QPoint, QTimer, QObject, QEvent, QMimeData
-from PySide6.QtGui import QAction, QBrush, QColor, QFont, QIcon
+from PySide6.QtGui import QAction, QBrush, QColor, QFont, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QFormLayout,
     QGroupBox,
     QHeaderView,
+    QHBoxLayout,
     QInputDialog,
     QLabel,
     QLineEdit,
@@ -53,6 +54,7 @@ RESOURCES_DIR = APP_DIR / "resources"
 PDF_ICON_PATH = RESOURCES_DIR / "pdf_icon.png"
 APP_ICON_PATH = RESOURCES_DIR / "app_icon.ico"
 APP_ICON_PNG_PATH = RESOURCES_DIR / "app_icon.png"
+BIBTEX_SUFFIXES = {".bib", ".bibtex"}
 
 
 ROLE_KIND = Qt.UserRole
@@ -196,6 +198,8 @@ class PaperManagerWindow(QMainWindow):
         self.create_toolbar()
         self.create_menu()
         self.create_main_layout()
+        self.search_shortcut = QShortcut(QKeySequence.Find, self)
+        self.search_shortcut.activated.connect(self.focus_search_box)
 
         self.refresh_folders()
         self.refresh_table()
@@ -296,7 +300,18 @@ class PaperManagerWindow(QMainWindow):
         widget = QWidget()
         layout = QVBoxLayout(widget)
 
-        self.status_label = QLabel("PDF or BibTeX files can be dropped into this window.")
+        self.status_label = QLabel("PDF or BibTeX files can be dropped into this window. Ctrl+F searches Title and Creator.")
+
+        search_layout = QHBoxLayout()
+        search_label = QLabel("Search")
+        self.search_box = QLineEdit()
+        self.search_box.setPlaceholderText("Search title or author (Ctrl+F)")
+        self.search_box.textChanged.connect(self.on_search_text_changed)
+        clear_search_button = QPushButton("Clear")
+        clear_search_button.clicked.connect(self.clear_search_box)
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(self.search_box)
+        search_layout.addWidget(clear_search_button)
 
         self.table = PaperTableWidget()
         self.table.delete_key_callback = self.delete_selected_papers
@@ -333,6 +348,7 @@ class PaperManagerWindow(QMainWindow):
                 self.table.setColumnWidth(idx, widths[key])
 
         layout.addWidget(self.status_label)
+        layout.addLayout(search_layout)
         layout.addWidget(self.table)
         return widget
 
@@ -480,7 +496,7 @@ class PaperManagerWindow(QMainWindow):
         return self.db.list_papers()
 
     def refresh_table(self) -> None:
-        rows = self.current_rows()
+        rows = self.filter_rows_by_search(self.current_rows())
 
         self.table.setSortingEnabled(False)
         self.table.setRowCount(0)
@@ -528,10 +544,53 @@ class PaperManagerWindow(QMainWindow):
         self.table.setSortingEnabled(True)
         self.apply_column_visibility()
         self.status_label.setText(
-            f"{len(rows)} papers loaded. PDF icon indicates an attached PDF. URL column opens browser on click."
+            self.table_status_message(len(rows))
         )
 
         self.clear_edit_panel()
+
+    # ---------- Search ----------
+
+    def search_query(self) -> str:
+        box = getattr(self, "search_box", None)
+        if box is None:
+            return ""
+        return box.text().strip().lower()
+
+    def filter_rows_by_search(self, rows):
+        query = self.search_query()
+        if not query:
+            return rows
+
+        terms = [term for term in query.split() if term]
+        if not terms:
+            return rows
+
+        filtered = []
+        for row in rows:
+            title = "" if row["title"] is None else str(row["title"])
+            creators = "" if row["creators"] is None else str(row["creators"])
+            haystack = f"{title} {creators}".lower()
+            if all(term in haystack for term in terms):
+                filtered.append(row)
+
+        return filtered
+
+    def on_search_text_changed(self, text: str) -> None:
+        self.refresh_table()
+
+    def focus_search_box(self) -> None:
+        self.search_box.setFocus()
+        self.search_box.selectAll()
+
+    def clear_search_box(self) -> None:
+        self.search_box.clear()
+
+    def table_status_message(self, row_count: int) -> str:
+        query = self.search_query()
+        if query:
+            return f"{row_count} papers found for '{query}'. Search targets Title and Creator."
+        return f"{row_count} papers loaded. PDF icon indicates an attached PDF. URL column opens browser on click."
 
     # ---------- Folder logic ----------
 
@@ -646,7 +705,7 @@ class PaperManagerWindow(QMainWindow):
             self,
             "Import BibTeX",
             str(Path.home()),
-            "BibTeX Files (*.bib)",
+            "BibTeX Files (*.bib *.bibtex)",
         )
 
         if not paths:
@@ -677,7 +736,7 @@ class PaperManagerWindow(QMainWindow):
                     self.db.upsert_pdf_stub(record, folder_id=folder_id)
                     imported_pdf += 1
 
-                elif suffix == ".bib":
+                elif suffix in BIBTEX_SUFFIXES:
                     records = import_bibtex_file(path)
                     for record in records:
                         if record.get("publication") and not record.get("journal_abbr"):
@@ -1127,7 +1186,7 @@ class PaperManagerWindow(QMainWindow):
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
                 path = Path(url.toLocalFile())
-                if path.suffix.lower() in {".pdf", ".bib"}:
+                if path.suffix.lower() in ({".pdf"} | BIBTEX_SUFFIXES):
                     event.acceptProposedAction()
                     return
 
@@ -1135,7 +1194,7 @@ class PaperManagerWindow(QMainWindow):
 
     def dropEvent(self, event) -> None:
         paths = [Path(url.toLocalFile()) for url in event.mimeData().urls()]
-        paths = [p for p in paths if p.suffix.lower() in {".pdf", ".bib"}]
+        paths = [p for p in paths if p.suffix.lower() in ({".pdf"} | BIBTEX_SUFFIXES)]
 
         if paths:
             self.import_paths(paths)
